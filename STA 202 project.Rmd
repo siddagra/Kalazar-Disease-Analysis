@@ -1,0 +1,389 @@
+---
+title: "STA 202 Project"
+author: "Siddharth Agrawal"
+date: '2023-05-06'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## summary of data:
+
+```{r}
+data <- read.csv("C:\\Users\\sidda\\Downloads\\socio_eco_disease.csv")
+summary(data)
+library(stargazer)
+stargazer(data, omit.summary.stat=c(), summary.stat=c("mean", "sd", "min", "p25", "median", "p75", "max"))
+```
+
+## Bar Plots for Level of Education:
+
+```{r}
+library(ggplot2)
+
+# Read the dataset
+data <- read.csv("C:\\Users\\sidda\\Downloads\\socio_eco_disease.csv")
+
+# Subset the data to only include gender and education variables
+subset_data <- subset(data, select = c("GENDER", "EDUCATION"))
+
+# Rename the Education variable to make it more clear
+subset_data$Education[subset_data$EDUCATION == 0] <- "Illiterate"
+subset_data$Education[subset_data$EDUCATION == 1] <- "Primary"
+subset_data$Education[subset_data$EDUCATION == 2] <- "Up to secondary"
+subset_data$Education[subset_data$EDUCATION == 3] <- "High school"
+subset_data$Education[subset_data$EDUCATION == 4] <- "College"
+
+# Group the data by gender and education
+grouped_data <- aggregate(subset_data$Education, by=list(Gender=subset_data$GENDER, Education=subset_data$Education), FUN=length)
+
+# Rename the Group.1 variable to Gender
+names(grouped_data)[names(grouped_data) == "Group.1"] <- "Gender"
+
+# Draw the bar chart
+ggplot(grouped_data, aes(x=Education, y=x, fill=Gender)) +
+  geom_bar(stat="identity", position="dodge") +
+  labs(x="Education", y="Count of people") +
+  ggtitle("Count of people with different education levels by gender")
+```
+
+```{r}
+# Sample data
+set.seed(123)
+
+# Kruskal-Wallis test
+kruskal.test(EDUCATION ~ GENDER, data = subset_data)
+```
+
+Fig.1 shows bar plot of count of people with different education levels by gender. From the bar plot itself, we may not be able to infer as much if the frequencies of sampled male and female are significantly different. Though this is unlikely to be the case due to the Stratified Random Sampling, it is better to double-check:
+
+```{r}
+data <- read.csv("C:\\Users\\sidda\\Downloads\\socio_eco_disease.csv")
+
+# Get the count of men and women
+gender_count <- table(data$GENDER)
+gender_count
+```
+
+The counts of male and female in the sampling are close. Therefore, from the bar plot, we can extrapolate that women on an average have a lower literacy level as compared to men. We can see that the number of illiterate women are higher than men. Primary education count in men is higher than women. More men graduated Secondary school than women. More men graduated high school as compared to women.
+
+```{r}
+library(ggplot2)
+
+# Filter out the "N" gender
+subset_data <- subset(data, GENDER != "N")
+
+# Group the data by gender and education level
+edu_counts <- aggregate(subset_data$Person_ID, 
+                        by = list(GENDER = subset_data$GENDER, 
+                                  EDUCATION = subset_data$EDUCATION), 
+                        FUN = length)
+
+# Create the plot
+ggplot(edu_counts, aes(x = EDUCATION, y = x, fill = GENDER)) +
+  geom_col(position = "dodge") +
+  xlab("Education level") +
+  ylab("Number of people") +
+  ggtitle("Education level distribution by gender") +
+  scale_fill_manual(values = c("#1F77B4", "#FF7F0E"), 
+                    labels = c("Female", "Male"))
+```
+
+
+
+
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+# Read the dataset
+df <- read.csv("C:\\Users\\sidda\\Downloads\\socio_eco_disease.csv")
+
+# convert GENDER and Overall.knowledge.about.KA.disease to factor
+df$GENDER <- as.factor(df$GENDER)
+df$Overall.knowledge.about.KA.disease <- as.factor(df$Overall.knowledge.about.KA.disease)
+
+# rename the factor levels
+levels(df$GENDER) <- c("Female", "Male", "Not Specified")
+levels(df$Overall.knowledge.about.KA.disease) <- c("Poor", "Good")
+
+# create two data frames, one for male and another for female respondents
+df_male <- df[df$GENDER == "Male", ]
+df_female <- df[df$GENDER == "Female", ]
+
+# create a pie chart for male respondents
+p1 <- ggplot(df_male, aes(x = "", fill = Overall.knowledge.about.KA.disease)) + 
+  geom_bar(width = 1, stat = "count") +
+  coord_polar("y", start=0) + 
+  labs(fill = "Knowledge about KA disease", title = "Pie chart for Male Respondents") +
+  scale_fill_manual(values = c("#FF7F0E", "#1F77B4")) +
+  theme_void()
+
+# create a pie chart for female respondents
+p2 <- ggplot(df_female, aes(x = "", fill = Overall.knowledge.about.KA.disease)) + 
+  geom_bar(width = 1, stat = "count") +
+  coord_polar("y", start=0) + 
+  labs(fill = "Knowledge about KA disease", title = "Pie chart for Female Respondents") +
+  scale_fill_manual(values = c("#FF7F0E", "#1F77B4")) +
+  theme_void()
+
+# combine the two pie charts into one window
+gridExtra::grid.arrange(ggplotGrob(p1), ggplotGrob(p2), nrow = 2)
+```
+
+
+```{r}
+library(stargazer)
+# Read the dataset
+data <- read.csv("C:\\Users\\sidda\\Downloads\\socio_eco_disease.csv")
+subset_data <- subset(data, GENDER != "N")
+
+data$GENDERF <- ifelse(data$GENDER == "F", 1, 0)
+data$GENDERM <- ifelse(data$GENDER == "M", 1, 0)
+data$Overall.knowledge.about.KA.disease <- as.factor(data$Overall.knowledge.about.KA.disease)
+# Create binary variables for GENDER using one-hot encoding
+
+
+# Fit logistic regression model with three predictor variables
+model <- glm(Overall.knowledge.about.KA.disease ~ GENDERF + 1, data = data, family = binomial(link="logit"))
+summary(model)
+stargazer(model)
+
+model <- glm(Overall.knowledge.about.KA.disease ~ GENDERM + 1, data = data, family = binomial(link="logit"))
+summary(model)
+stargazer(model)
+
+ggplot(data, aes(x = GENDER, fill = Overall.knowledge.about.KA.disease)) +
+  geom_bar(position = "fill") +
+  labs(x = "Gender", y = "Proportion", fill = "Knowledge about KA") +
+  ggtitle("Gender and Knowledge about KA")
+```
+
+
+The logistic regression model was used to fit the association between gender (female) and overall knowledge about KA disease as reported by respondents. The overall knowledge about KA disease was treated as the dependent variable, which was classified as 1 or 0 for good and poor, respectively. Gender was the independent variable. The logistic regression model was applied with a binomial family and logit link function.
+
+The coefficients of the model showed that the intercept (representing the log-odds of the outcome when gender was zero) was estimated to be 0.9494, with a standard error of 0.1172. The estimate for gender (female) was -0.3625, with a standard error of 0.1621. The negative sign for the gender estimate suggested that being female was associated with lower odds of having good knowledge about KA disease.
+
+The z-value for the intercept was 8.102 with a p-value of 5.42e-16, indicating that the intercept was significantly different from zero. The z-value for gender was -2.236 with a p-value of 0.0253, indicating that gender was associated with overall knowledge about KA disease at a statistical significance level of 5%. The Logistic regression thus indicates that the relationship between overall knowledge about KA disease and being female is unlikely to be due to chance error, but rather due to some other effect. One Potential Effect may be the originally discussed differences in education, that are affecting woman negatively in this regard...
+
+The null deviance and residual deviance were 886.04 and 881.02, respectively. The residual deviance represents the goodness of fit of the model, with a lower residual deviance indicating a better fit. The AIC (Akaike Information Criterion) was 885.02, which is a measure of the relative quality of the statistical model for a given set of data. A lower AIC value indicates a better fit of the model.
+
+In conclusion, the logistic regression model showed that gender was a significant predictor of overall knowledge about KA disease, with females having lower odds of good knowledge than males.
+
+
+
+The second model is also a logistic regression model that examines the relationship between gender (male) and overall knowledge about KA disease. The variable "Overall.knowledge.about.KA.disease" is the dependent variable, which has two levels (good and poor knowledge), and gender is the independent variable.
+
+The model output shows that the intercept is statistically significant (p < 0.001) and has an estimated coefficient of 0.5958. This means that the odds of having good knowledge about KA disease is exp(0.5958) times higher for the reference group (presumably male) than for the comparison group (presumably female) when the value of the independent variable is 0.
+
+The coefficient for the gender variable is 0.3459, indicating that the odds of having good knowledge about KA disease for females is exp(0.3459) times lower than that for males, all else being equal. This coefficient is statistically significant (p = 0.0328), suggesting that gender is a significant predictor of overall knowledge about KA disease.
+
+The deviance residuals indicate that the model fits the data reasonably well. The null deviance, which is the deviance when only the intercept is included in the model, is 886.04, while the residual deviance is 881.47. The AIC value is 885.47, which is a measure of the model's goodness of fit. The number of Fisher Scoring iterations was 4.
+
+The fact that the intercept was statistically significant with high coefficient in both cases may show that .... 
+
+
+
+```{r}
+# Read in the data from the CSV file
+data <- read.csv("C:\\Users\\sidda\\Downloads\\socio_eco_disease.csv")
+data <- subset(data, GENDER != "N")
+
+# Convert the factor variable to numeric
+data$GENDER <- as.numeric(factor(data$GENDER))
+
+# Fit a logistic regression model with gender as the predictor and knowledge about Kala Zar as the response
+model <- glm(Overall.knowledge.about.KA.disease ~ GENDER, data = data, family = binomial)
+
+
+# Plot the logistic curve using GGplot
+library(ggplot2)
+
+ggplot(data, aes(x = GENDER, y = Overall.knowledge.about.KA.disease)) +
+  geom_point() +
+  geom_smooth(method = "glm", method.args = list(family = binomial), se = FALSE) +
+  xlab("Gender") +
+  ylab("Overall Knowledge about Kala Zar")
+```
+
+```{r}
+# Read the dataset
+data <- read.csv("C:\\Users\\sidda\\Downloads\\socio_eco_disease.csv")
+
+data$Gender <- as.factor(data$GENDER)
+data$Overall.knowledge.about.vector <- as.factor(data$Overall.knowledge.about.vector)
+data$GENDERF <- ifelse(data$GENDER == "F", 1, 0)
+data$GENDERM <- ifelse(data$GENDER == "M", 1, 0)
+
+model <- glm(Overall.knowledge.about.vector ~ GENDERF, data = data, family = binomial)
+summary(model)
+stargazer(model)
+
+model <- glm(Overall.knowledge.about.vector ~ GENDERM, data = data, family = binomial)
+summary(model)
+stargazer(model)
+
+
+ggplot(data, aes(x = GENDER, fill = Overall.knowledge.about.vector)) +
+  geom_bar(position = "fill") +
+  labs(x = "Gender", y = "Proportion", fill = "Knowledge about KA") +
+  ggtitle("Gender and Knowledge about KA")
+```
+
+
+```{r}
+# Read in the data from the CSV file
+data <- read.csv("C:\\Users\\sidda\\Downloads\\socio_eco_disease.csv")
+data <- subset(data, GENDER != "N")
+
+# Convert the factor variable to numeric
+data$GENDER <- as.numeric(factor(data$GENDER))
+
+# Fit a logistic regression model with gender as the predictor and knowledge about Kala Zar as the response
+model <- glm(Overall.knowledge.about.vector ~ GENDER, data = data, family = binomial)
+
+
+# Plot the logistic curve using GGplot
+library(ggplot2)
+
+ggplot(data, aes(x = GENDER, y = Overall.knowledge.about.vector)) +
+  geom_point() +
+  geom_smooth(method = "glm", method.args = list(family = binomial), se = FALSE) +
+  xlab("Gender") +
+  ylab("Overall Knowledge about Kala Zar")
+
+```
+
+
+```{r}
+# Load the dataset
+data <- read.csv("C:\\Users\\sidda\\Downloads\\socio_eco_disease.csv")
+
+# Select required columns
+data_female <- subset(data, select = c("Overall.knowledge.about.KA.disease", "Overall.practice", "GENDER"))
+
+# Filter for female respondents
+data_female <- subset(data_female, GENDER == "F")
+
+
+# Convert variables to factors
+data_female$Overall.knowledge.about.KA.disease <- factor(data_female$Overall.knowledge.about.KA.disease)
+data_female$Overall.practice <- factor(data_female$Overall.practice)
+
+# Perform chi-square test
+model <- chisq.test(data_female$Overall.knowledge.about.KA.disease, data_female$Overall.practice)
+
+
+```
+
+
+```{r}
+# Load the dataset
+data <- read.csv("C:\\Users\\sidda\\Downloads\\socio_eco_disease.csv")
+
+# Select required columns
+data_male <- subset(data, select = c("Overall.knowledge.about.KA.disease", "Overall.practice", "GENDER"))
+
+# Filter for female respondents
+data_male <- subset(data_male, GENDER == "M")
+
+
+# Convert variables to factors
+data_male$Overall.knowledge.about.KA.disease <- factor(data_male$Overall.knowledge.about.KA.disease)
+data_male$Overall.practice <- factor(data_male$Overall.practice)
+
+# Perform chi-square test
+chisq.test(data_male$Overall.knowledge.about.KA.disease, data_male$Overall.practice)
+```
+
+
+```{r}
+data <- read.csv("C:\\Users\\sidda\\Downloads\\socio_eco_disease.csv")
+
+# Select required columns
+data_female <- subset(data, select = c("Overall.knowledge.about.KA.disease", "Overall.practice", "GENDER"))
+
+# Filter for female respondents
+data_female <- subset(data_female, GENDER == "F")
+
+
+# Convert variables to factors
+data_female$Overall.knowledge.about.KA.disease <- factor(data_female$Overall.knowledge.about.KA.disease)
+data_female$Overall.practice <- factor(data_female$Overall.practice)
+
+# Perform chi-square test
+chisq.test(data_female$Overall.knowledge.about.KA.disease, data_female$Overall.practice, simulate.p.value=TRUE)
+```
+
+
+```{r}
+# Load the dataset
+df <- read.csv("C:\\Users\\sidda\\Downloads\\socio_eco_disease.csv")
+
+# Filter out "N" from GENDER
+df <- df[df$GENDER %in% c("F", "M"),]
+
+# Create a contingency table
+table <- table(df$GENDER, df$Overall.practice)
+table
+chisq.test(table)
+```
+
+
+
+
+```{r}
+# Load the required library
+library(tidyverse)
+
+# Read the data
+data <- read.csv("C:\\Users\\sidda\\Downloads\\socio_eco_disease.csv")
+
+# Create a subset of the data with the relevant variables
+subset <- data %>% select(GENDER, EDUCATION, OCCUPATION, 
+                          `MONTHLY.FAMILY.INCOME`, `TYPE.OF.HOUSE`, 
+                          `FAMILY.SIZE`, `NO.OF.BED.ROOMS`, `Overall.attitude`)
+
+
+subset$`FAMILY.SIZE`[subset$`FAMILY.SIZE` == "MORE"] <- 15
+subset$`FAMILY.SIZE` <- as.numeric(subset$`FAMILY.SIZE`)
+subset$GENDER <- as.factor(subset$GENDER)
+subset$EDUCATION <- as.factor(subset$EDUCATION)
+subset$OCCUPATION <- as.factor(subset$OCCUPATION)
+subset$`MONTHLY.FAMILY.INCOME` <- as.factor(subset$`MONTHLY.FAMILY.INCOME`)
+subset$`TYPE.OF.HOUSE` <- as.factor(subset$`TYPE.OF.HOUSE`)
+subset$`NO.OF.BED.ROOMS` <- as.numeric(subset$`NO.OF.BED.ROOMS`)
+subset$`Overall.attitude` <- as.factor(subset$`Overall.attitude`)
+
+# Split the data into training and testing sets
+set.seed(123)
+trainIndex <- sample(1:nrow(subset), 1.0*nrow(subset))
+train <- subset[trainIndex, ]
+test <- subset[-trainIndex, ]
+
+# Train a logistic regression model
+model <- glm(`Overall.attitude` ~ GENDER + EDUCATION + OCCUPATION + `MONTHLY.FAMILY.INCOME` + 
+               `TYPE.OF.HOUSE` + `FAMILY.SIZE` + `NO.OF.BED.ROOMS`, 
+             data = train, family = binomial(link="logit"))
+
+summary(model, test = "Chisq")
+
+# Load stargazer package
+library(stargazer)
+
+# Show model summary as plain text
+summary_text <- capture.output(stargazer(model, header = FALSE, type = "text"))
+cat(summary_text, sep = "\n")
+
+library(car)
+# Type II ANOVA test
+Anova(model, type="II")
+```
+
+
+As we can see in the above Multiple Logistic Regression tables. None of the predictor variables seems to be a particularly 
+
+
